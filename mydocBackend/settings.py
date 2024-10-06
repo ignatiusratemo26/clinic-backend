@@ -1,15 +1,26 @@
 from pathlib import Path
 import firebase_admin
 from firebase_admin import credentials
-
-
+import os
+import json
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-FIREBASE_CREDENTIALS_PATH = BASE_DIR / 'firebase-credentials.json'
+# FIREBASE_CREDENTIALS_PATH = BASE_DIR / 'firebase-credentials.json'
 
-firebase_cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-firebase_admin.initialize_app(firebase_cred)
+# firebase_cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+# firebase_admin.initialize_app(firebase_cred)
+
+# Read Firebase credentials from environment variable
+firebase_credentials_json = os.getenv('FIREBASE_CREDENTIALS_JSON')
+
+if firebase_credentials_json:
+    firebase_cred_dict = json.loads(firebase_credentials_json)
+    firebase_cred = credentials.Certificate(firebase_cred_dict)
+    firebase_admin.initialize_app(firebase_cred)
+else:
+    raise FileNotFoundError("Firebase credentials not found in environment variables")
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

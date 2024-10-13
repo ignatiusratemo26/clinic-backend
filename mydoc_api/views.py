@@ -50,12 +50,15 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['doctor__first_name', 'doctor__last_name', 'doctor__specialization']
 
+    def get_queryset(self):
+        return Appointment.objects.filter(patient=self.request.user)
+
     def create(self, request, *args, **kwargs):
         # Get appointment data
         data = request.data
         doctor_id = data.get('doctor_id')
         doctor = get_object_or_404(Doctor, id=doctor_id)
-        consultation_fee = doctor.consultation_fee  # Assume doctor has a fee
+        consultation_fee = doctor.fee  # Assume doctor has a fee
 
         available_time_slot = AvailableTimeSlot.objects.get(
             doctor=doctor,

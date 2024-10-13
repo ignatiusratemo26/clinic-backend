@@ -1,13 +1,18 @@
 from rest_framework import serializers
-from .models import Doctor, Appointment, AvailableTimeSlot
-from django.contrib.auth.models import User
+from .models import Doctor, Appointment, AvailableTimeSlot, Profile
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['wallet_balance']
 
 class LoginSerializer(serializers.Serializer):
-    # class Meta:
-    #     fields = ['username', 'password']
-    #     model = User
     username = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+    
+    def validate(self, data):
+        data['username'] = data['username'].lower()
+        return data
 
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:

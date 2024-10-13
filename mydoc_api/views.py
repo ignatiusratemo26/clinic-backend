@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework.authentication import BasicAuthentication
+from django.shortcuts import get_object_or_404
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -40,7 +41,8 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
 
 
-# ViewSet for Appointments
+
+
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
@@ -48,18 +50,31 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['doctor__first_name', 'doctor__last_name', 'doctor__specialization']
 
-
     def create(self, request, *args, **kwargs):
-        # Book an appointment
+        # Get appointment data
         data = request.data
         doctor_id = data.get('doctor_id')
-        doctor = Doctor.objects.get(id=doctor_id)
+        doctor = get_object_or_404(Doctor, id=doctor_id)
+        consultation_fee = doctor.consultation_fee  # Assume doctor has a fee
+
         available_time_slot = AvailableTimeSlot.objects.get(
             doctor=doctor,
             available_date=data.get('available_date'),
             start_time=data.get('start_time'),
             is_available=True
         )
+
+        # Check if the user has enough balance
+        user_profile = request.user.profile
+        if user_profile.wallet_balance < consultation_fee:
+            return Response(
+                {'error': 'Insufficient balance in wallet.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Deduct consultation fee from wallet
+        user_profile.wallet_balance -= consultation_fee
+        user_profile.save()
 
         # Book the time slot and create appointment
         available_time_slot.is_booked = True
@@ -76,7 +91,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    # Filter Appointments by Status (complete, upcoming, cancelled)
     @action(detail=False, methods=['get'])
     def filter_by_status(self, request):
         status_param = request.query_params.get('status', None)
@@ -85,6 +99,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(appointments, many=True)
             return Response(serializer.data)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 # ViewSet for Available Time Slots
 class AvailableTimeSlotViewSet(viewsets.ReadOnlyModelViewSet):

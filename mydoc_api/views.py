@@ -2,14 +2,42 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import filters
-from .models import Doctor, Appointment, AvailableTimeSlot
-from .serializers import DoctorSerializer, AppointmentSerializer, AvailableTimeSlotSerializer, LoginSerializer
+from .models import Doctor, Appointment, AvailableTimeSlot, Profile
+from .serializers import DoctorSerializer, AppointmentSerializer, AvailableTimeSlotSerializer, LoginSerializer,ProfileSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework.authentication import BasicAuthentication
 from django.shortcuts import get_object_or_404
+from decimal import Decimal
 
+
+class ProfileViewSet(viewsets.ModelViewSet):
+    queryset = Profile.objects.all()
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Profile.objects.filter(user=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def recharge_wallet(self, request):
+        amount = request.data.get('amount')
+        if not amount:
+            return Response({"error": "Amount is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            amount = Decimal(amount)
+        except (ValueError, TypeError):
+            return Response({"error": "Invalid amount format."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if amount <= 0:
+            return Response({"error": "Amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_profile = request.user.profile
+        user_profile.wallet_balance += amount
+        user_profile.save()
+        return Response({'wallet_balance': user_profile.wallet_balance})
+    
 class LoginView(APIView):
     permission_classes = [AllowAny]
 

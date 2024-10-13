@@ -1,10 +1,12 @@
 from django.urls import path
 from .views import DoctorViewSet, AppointmentViewSet, AvailableTimeSlotViewSet
 from rest_framework import routers
+from .views import LoginView
 
 router = routers.DefaultRouter()
 urlpatterns = router.urls
 urlpatterns += [
+    path('login/', LoginView.as_view(), name='login'),
     path('doctors/', DoctorViewSet.as_view({'get': 'list'}), name='doctor-list'),
     path('appointments/', AppointmentViewSet.as_view({'get': 'list', 'post': 'create'}), name='appointment-list'),
     path('appointments/filter_by_status/', AppointmentViewSet.as_view({'get': 'filter_by_status'}), name='appointment-filter-by-status'),

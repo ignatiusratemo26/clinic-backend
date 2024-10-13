@@ -1,11 +1,35 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from mydoc_api.authentication import FirebaseAuthentication
 from rest_framework import filters
 from .models import Doctor, Appointment, AvailableTimeSlot
-from .serializers import DoctorSerializer, AppointmentSerializer, AvailableTimeSlotSerializer
+from .serializers import DoctorSerializer, AppointmentSerializer, AvailableTimeSlotSerializer, LoginSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.views import APIView
+from django.contrib.auth import authenticate
+from rest_framework.authentication import BasicAuthentication
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # Use the LoginSerializer to validate the input
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        username = serializer.validated_data['username']
+        password = serializer.validated_data['password']
+
+        # Authenticate using username and password
+        user = authenticate(username=username, password=password)
+        if user:
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        # Return the serializer for DRF browsable API form display
+        serializer = LoginSerializer()
+        return Response(serializer.data)
 
 # ViewSet for managing Doctors
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
@@ -14,7 +38,6 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['first_name', 'last_name', 'specialization']
     permission_classes = [AllowAny]
-    authentication_classes = [FirebaseAuthentication]
 
 
 # ViewSet for Appointments
@@ -22,7 +45,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
     permission_classes = [IsAuthenticated]
-    authentication_classes = [FirebaseAuthentication]
     filter_backends = [filters.SearchFilter]
     search_fields = ['doctor__first_name', 'doctor__last_name', 'doctor__specialization']
 
@@ -68,7 +90,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 class AvailableTimeSlotViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AvailableTimeSlot.objects.all()
     serializer_class = AvailableTimeSlotSerializer
-    authentication_classes = [FirebaseAuthentication]
 
     def get_queryset(self):
         doctor_id = self.request.query_params.get('doctor_id')

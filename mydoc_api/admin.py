@@ -1,11 +1,9 @@
 from django.contrib import admin
 from .models import Doctor, Appointment, AvailableTimeSlot, Profile
 
-# Register Profile model
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'firebase_uid')
-    search_fields = ('user__username', 'firebase_uid')
+    list_display = ('user', 'wallet_balance')
 
 # Register Doctor model
 @admin.register(Doctor)

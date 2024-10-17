@@ -131,6 +131,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+# POST /api/appointments/
+# GET /api/available_time_slots/?doctor_id=<doctor_id>&date=<date>
 
 # ViewSet for Available Time Slots
 class AvailableTimeSlotViewSet(viewsets.ReadOnlyModelViewSet):

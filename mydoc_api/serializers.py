@@ -1,5 +1,20 @@
 from rest_framework import serializers
-from .models import Doctor, Appointment, AvailableTimeSlot
+from .models import Doctor, Appointment, AvailableTimeSlot, Profile
+
+class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    class Meta:
+        model = Profile
+        fields = ['username','email','wallet_balance']
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True, required=True)
+
+    def validate(self, data):
+        data['username'] = data['username'].lower()
+        return data
 
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:

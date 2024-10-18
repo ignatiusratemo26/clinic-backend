@@ -4,11 +4,12 @@ from django.contrib.auth.models import User
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    firebase_uid = models.CharField(max_length=255, unique=True)
+    wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     def __str__(self):
         return self.user.username
-    
+
+  
 # Doctor model
 class Doctor(models.Model):
     first_name = models.CharField(max_length=100)
@@ -35,6 +36,7 @@ class Appointment(models.Model):
     appointment_date = models.DateField()
     start_time = models.TimeField()
     end_time = models.TimeField()
+
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='upcoming')
 
     def __str__(self):

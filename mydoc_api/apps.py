@@ -7,4 +7,6 @@ class MydocApiConfig(AppConfig):
 
     def ready(self):
         import mydoc_api.signals
+
+
         

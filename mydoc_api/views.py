@@ -95,7 +95,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             is_available=True,  # Ensure the time slot is available
             is_booked=False  # Ensure the time slot is not booked
         )
-        doctor=available_time_slot.doctor,
+        doctor=available_time_slot.doctor
         consultation_fee=doctor.fee
         # Check if the user has enough balance
         user_profile = request.user.profile
@@ -118,9 +118,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = Appointment.objects.create(
             patient=request.user,
             doctor=doctor,
-            appointment_date=available_time_slot.get('available_date'),
-            start_time=available_time_slot.get('start_time'),
-            end_time=available_time_slot.get('end_time'),
+            appointment_date=available_time_slot.available_date,
+            start_time=available_time_slot.start_time,
+            end_time=available_time_slot.end_time,
             status='upcoming'
         )
 

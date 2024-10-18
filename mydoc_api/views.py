@@ -3,13 +3,14 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import filters
 from .models import Doctor, Appointment, AvailableTimeSlot, Profile
-from .serializers import DoctorSerializer, AppointmentSerializer, AvailableTimeSlotSerializer, LoginSerializer,ProfileSerializer
+from .serializers import DoctorSerializer, AppointmentSerializer, AvailableTimeSlotSerializer, LoginSerializer, ProfileSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
 from rest_framework.authentication import BasicAuthentication
 from django.shortcuts import get_object_or_404
 from decimal import Decimal
+from django.db import transaction
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
@@ -37,7 +38,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
         user_profile.wallet_balance += amount
         user_profile.save()
         return Response({'wallet_balance': user_profile.wallet_balance})
-    
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -60,6 +62,7 @@ class LoginView(APIView):
         serializer = LoginSerializer()
         return Response(serializer.data)
 
+
 # ViewSet for managing Doctors
 class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Doctor.objects.all()
@@ -67,8 +70,6 @@ class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['first_name', 'last_name', 'specialization']
     permission_classes = [AllowAny]
-
-
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -81,20 +82,21 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Appointment.objects.filter(patient=self.request.user)
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         # Get appointment data
-        data = request.data
-        doctor_id = data.get('doctor_id')
-        doctor = get_object_or_404(Doctor, id=doctor_id)
-        consultation_fee = doctor.fee  # Assume doctor has a fee
+        available_time_slot_id = request.data.get('available_time_slot_id')
 
-        available_time_slot = AvailableTimeSlot.objects.get(
-            doctor=doctor,
-            available_date=data.get('available_date'),
-            start_time=data.get('start_time'),
-            is_available=True
+        # Find the available time slot
+        available_time_slot = get_object_or_404(
+            AvailableTimeSlot,
+            id=available_time_slot_id,
+            
+            is_available=True,  # Ensure the time slot is available
+            is_booked=False  # Ensure the time slot is not booked
         )
-
+        doctor=available_time_slot.doctor,
+        consultation_fee=doctor.fee
         # Check if the user has enough balance
         user_profile = request.user.profile
         if user_profile.wallet_balance < consultation_fee:
@@ -107,16 +109,19 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         user_profile.wallet_balance -= consultation_fee
         user_profile.save()
 
-        # Book the time slot and create appointment
+        # Mark the time slot as booked
         available_time_slot.is_booked = True
+        available_time_slot.is_available = False
         available_time_slot.save()
 
+        # Create the appointment
         appointment = Appointment.objects.create(
             patient=request.user,
             doctor=doctor,
-            appointment_date=data.get('available_date'),
-            start_time=data.get('start_time'),
-            end_time=data.get('end_time')
+            appointment_date=available_time_slot.get('available_date'),
+            start_time=available_time_slot.get('start_time'),
+            end_time=available_time_slot.get('end_time'),
+            status='upcoming'
         )
 
         serializer = self.get_serializer(appointment)
@@ -131,8 +136,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
-# POST /api/appointments/
-# GET /api/available_time_slots/?doctor_id=<doctor_id>&date=<date>
 
 # ViewSet for Available Time Slots
 class AvailableTimeSlotViewSet(viewsets.ReadOnlyModelViewSet):
@@ -146,6 +149,19 @@ class AvailableTimeSlotViewSet(viewsets.ReadOnlyModelViewSet):
         # Filter time slots based on doctor and date
         if doctor_id and date:
             return AvailableTimeSlot.objects.filter(doctor_id=doctor_id, available_date=date, is_available=True)
+        elif doctor_id:
+            return AvailableTimeSlot.objects.filter(doctor_id=doctor_id)
         return super().get_queryset()
-    
-    
+
+    @action(detail=True, methods=['post'], url_path='book', url_name='book')
+    def book_time_slot(self, request, pk=None):
+        try:
+            time_slot = self.get_object()
+            if time_slot.is_booked:
+                return Response({'error': 'Time slot is already booked.'}, status=status.HTTP_400_BAD_REQUEST)
+            time_slot.is_booked = True
+            time_slot.is_available = False
+            time_slot.save()
+            return Response({'message': 'Time slot booked successfully.'}, status=status.HTTP_200_OK)
+        except:
+            return Response({'error': 'Time slot not found.'}, status=status.HTTP_404_NOT_FOUND)

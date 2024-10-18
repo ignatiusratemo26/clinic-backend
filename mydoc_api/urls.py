@@ -4,6 +4,10 @@ from rest_framework import routers
 from .views import LoginView
 
 router = routers.DefaultRouter()
+router.register(r'appointments', AppointmentViewSet)
+router.register(r'doctors', DoctorViewSet)
+router.register(r'available_time_slots', AvailableTimeSlotViewSet)
+router.register(r'profile', ProfileViewSet)
 urlpatterns = router.urls
 urlpatterns += [
     path('login/', LoginView.as_view(), name='login'),
